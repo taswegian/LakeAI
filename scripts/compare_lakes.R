@@ -5,21 +5,21 @@ library(reshape2)
 library(scales)
 library(ggplot2)
 library(rgdal)
-library(hydrolinks)
+# library(hydrolinks)
 library(data.table)
 library(cluster)
 
 ### ENV
-par(mar=c(.5,.5,.5,.5))
+par(mar=c(2,2,2,2))
 
 ## set paths
 data.path <- '~/projects/LakeAI/data'
 figs.path <- '~/projects/LakeAI/figs/'
-img.path <- '~/projects/LakeAI/data/processed/'
+img.path <- '~/projects/LakeAI/data/processed//'
 
 lakes.name <- list.files(path = img.path, full.names = F, recursive = F)
-lakes.name <- lakes.name[-grep('var',lakes.name)]
-lakes.name <- lakes.name[-grep('med',lakes.name)]
+# lakes.name <- lakes.name[-grep('var',lakes.name)]
+# lakes.name <- lakes.name[-grep('med',lakes.name)]
 lakes.name <- gsub('.rds','',lakes.name)
 lakes.name <- gsub('landsat','',lakes.name)
 
@@ -27,8 +27,8 @@ lakes.name <- gsub('landsat','',lakes.name)
 rgb.trans <- div_gradient_pal(low="blue", mid="green", high="red", space = "Lab")
 rgb.colrs <- rgb.trans(seq(0,1, length.out=200))
 
-rg.trans <- div_gradient_pal(mid="green", space = "Lab")
-rg.colrs <- rg.trans(seq(0,1, length.out=100))
+byb.trans <- div_gradient_pal(low="brown", mid="yellow", high="blue", space = "Lab")
+byb.colrs <- byb.trans(seq(0,1, length.out=100))
 
 b.trans <- div_gradient_pal(mid="blue", space = "Lab")
 b.colrs <- b.trans(seq(0,1, length.out=100))
@@ -40,25 +40,43 @@ response_variables <- read_csv("~/projects/LakeAI/data/response_variables.csv")
 rvars <- response_variables
 
 # rds
-img.filenames <- img.filenames[which(endsWith(img.filenames,'rds'))]
+lake.filenames <- img.filenames[grep('lake',img.filenames)]
+watershed.filenames <- img.filenames[grep('watershed',img.filenames)]
 # tif
-# img.filenames <- img.filenames[which(endsWith(img.filenames,'tif'))]
+img.filenames <- img.filenames[which(endsWith(img.filenames,'tif'))]
 
 # drop var images
-img.filenames <- img.filenames[-grep('var',img.filenames)]
-img.filenames <- img.filenames[-grep('med',img.filenames)]
+# img.filenames <- img.filenames[-grep('var',img.filenames)]
+
+# drop mean images
+img.filenames <- img.filenames[grep('med',img.filenames)]
 
 # band names
 band.names <- c("Ultra Blue","Blue","Green","Red","NIR","SWIR1","SWIR2","Kelvin1","Kelvin1")
 
-# vars
-bound <- length(img.filenames)
+# read scene rds
+scene.imgs <- c()
+invisible(
+  sapply(1:length(img.filenames),function(i){
+    img <- readRDS(file = img.filenames[i])
+    names(img) <- band.names
+    scene.imgs <<- c(scene.imgs,img)
+  })
+)
+
+# label bands
+invisible(
+  sapply(1:length(img.filenames),function(i){
+    names(scene.imgs[[i]]) <<- band.names
+  })
+)
+
 
 # read lake rds
 lake.imgs <- c()
 invisible(
-  sapply(1:bound,function(i){
-    img <- readRDS(file = img.filenames[i])
+  sapply(1:length(lake.filenames),function(i){
+    img <- readRDS(file = lake.filenames[i])
     names(img) <- band.names
     lake.imgs <<- c(lake.imgs,img)
   })
@@ -66,8 +84,25 @@ invisible(
 
 # label bands
 invisible(
-  sapply(1:bound,function(i){
+  sapply(1:length(lake.filenames),function(i){
     names(lake.imgs[[i]]) <<- band.names
+  })
+)
+
+# read watershed rds
+watershed.imgs <- c()
+invisible(
+  sapply(1:length(watershed.filenames),function(i){
+    img <- readRDS(file = watershed.filenames[i])
+    names(img) <- band.names
+    watershed.imgs <<- c(watershed.imgs,img)
+  })
+)
+
+# label bands
+invisible(
+  sapply(1:length(watershed.filenames),function(i){
+    names(watershed.imgs[[i]]) <<- band.names
   })
 )
 
@@ -75,10 +110,18 @@ invisible(
 # plot and save NDVI of lakes
 
 # testing
-lake <- lake.imgs[[51]]
-ndvi <- NDVI(lake,5,4)
+img <- scene.imgs[[6]]
+img <- lake.imgs[[63]]
+img <- watershed.imgs[[5]]
+
+# img <- watersheds.img.sub[166]
+
+ndvi <- NDVI(img,5,4)
+ndwi <- NDWI(img,5,6)
 
 plot(ndvi,col=rgb.colrs)
+plot(ndwi,col=byb.colrs)
+
 
 lake.ndvi.mat <- getValues(ndvi)
 summary(lake.ndvi.mat)
@@ -216,6 +259,7 @@ lakes.rs <- data.frame(lake=lakes.name,
                        veg_ndwi=lakes.ndwi.veg)
 
 lakes.rvars <- rvars[which(rvars$SITE_ID%in%as.character(lakes.rs$lake)),]
+lakes.rvars <- rvars[which(rvars$SITE_ID%in%as.character(lakes.name$lake)),]
 
 attach(lakes.rvars)
 lakes.rvars <- aggregate.data.frame(lakes.rvars,by=list(SITE_ID),FUN = mean)

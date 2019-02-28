@@ -42,14 +42,19 @@ sudo add-apt-repository \
 `sudo apt-get install docker-ce`
 
 ```
-mkdir -p /mnt/volume-nyc3-01; mount -o discard,defaults /dev/disk/by-id/scsi-0DO_Volume_volume-nyc3-01 /mnt/volume-nyc3-01; echo /dev/disk/by-id/scsi-0DO_Volume_volume-nyc3-01 /mnt/volume-nyc3-01 ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
+mkdir -p /mnt/lake_ai_data; mount -o discard,defaults /dev/disk/by-id/scsi-0DO_Volume_lake_ai_data /mnt/lake_ai_data; echo /dev/disk/by-id/scsi-0DO_Volume_lake_ai_data /mnt/lake_ai_data ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
 ```
 
 ```
 docker login
-docker pull aeleish/debian-r-gdal
-
-```
-docker run -it --name lakeAI --mount type=bind,source=/mnt/volume-nyc3-01,target=/data aeleish/debian-r-gdal:latest
+# docker pull aeleish/debian-r-gdal
+docker pull aeleish/debian-r-jupyter
 ```
 
+```
+docker run -it -p 8008:8888 --name lakeAI --mount type=bind,source=/mnt/lake_ai_data,target=/data aeleish/debian-r-jupyter:latest
+```
+
+```
+# docker run -it --name lakeAI --mount type=bind,source=/mnt/lake_ai_data,target=/data aeleish/debian-r-gdal:latest
+```
