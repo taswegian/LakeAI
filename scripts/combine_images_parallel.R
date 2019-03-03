@@ -13,8 +13,8 @@ cl <- makeCluster(UseCores, outfile="")
 registerDoParallel(cl)
 
 ## vars
-scene.path <- '/data/geotiffs/'
-out.path <- '/data/output/'
+scene.path <- '/data/datasets/Lake_Landsat/'
+out.path <- '/data/datasets/output/'
 scene.dirs <- list.files(path = scene.path, full.names = F, recursive = F)
 #print(length(lakes.dirs))
 band.limit <- 9
@@ -23,7 +23,7 @@ band.limit <- 9
 processScene <- function(scene.dir) {
   out <- tryCatch(
     {
-      print(scene.dir);
+      #print(scene.dir);
       curr.dir <- gsub(' ','',paste(scene.path,scene.dir))
       
       #list file in current dir
@@ -33,24 +33,26 @@ processScene <- function(scene.dir) {
       
       #print(curr.dir) 
       #print(scene.files);
-     
+      print(length(scene.files));
       setwd(curr.dir);
       
       ## read and stack all bands for all images in dir
       band.stacks <- c();
-      invisible(sapply(1:band.limit,function(b){ band.stacks <<- c(band.stacks,stack(lake.files,bands=c(b))) })); 
+      invisible(sapply(1:band.limit,function(b){ band.stacks <<- c(band.stacks,stack(scene.files,bands=c(b))) })); 
       super.stack <- stack(band.stacks)
+      print('stacked');
       # 
       # ## create super median image
-      # band.meds <- c();
-      # invisible(sapply(1:band.limit,function(b){ band.meds <<- c(band.meds,calc(band.stacks[[b]],median,na.rm=T))}));
-      # super.med.img <- stack(band.meds);
+      #band.meds <- c();
+      #invisible(sapply(1:band.limit,function(b){ band.meds <<- c(band.meds,calc(band.stacks[[b]],median,na.rm=T))}));
+      #super.med.img <- stack(band.meds);
       super.med.img <- calc(super.stack,median,na.rm=T)
+      print('computed  median');
       # 
       # ## create super mean image
-      band.means <- c();
-      # invisible(sapply(1:band.limit,function(b){ band.means <<- c(band.means,calc(band.stacks[[b]],mean,na.rm=T))}));
-      # super.mean.img <- stack(band.means);
+      #band.means <- c();
+      #invisible(sapply(1:band.limit,function(b){ band.means <<- c(band.means,calc(band.stacks[[b]],mean,na.rm=T))}));
+      #super.mean.img <- stack(band.means);
       super.mean.img <- calc(super.stack,mean,na.rm=T)
       #
       # ## create super variance image
@@ -58,9 +60,9 @@ processScene <- function(scene.dir) {
       # 
       # ## RDS of super images
 
-      saveRDS(super.med.img, file = gsub(' ','',paste(data.path,lake,'_med.rds')), ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL);
-      saveRDS(super.mean.img, file = gsub(' ','',paste(data.path,lake,'_mean.rds')), ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL);
-      saveRDS(super.var.img, file = gsub(' ','',paste(data.path,lake,'_var.rds')), ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL);
+      saveRDS(super.med.img, file = gsub(' ','',paste(out.path,scene.dir,'_med.rds')), ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL);
+      saveRDS(super.mean.img, file = gsub(' ','',paste(out.path,scene.dir,'_mean.rds')), ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL);
+      saveRDS(super.var.img, file = gsub(' ','',paste(out.path,scene.dir,'_var.rds')), ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL);
     },
     error=function(cond) {
       message(cond)
@@ -73,7 +75,7 @@ processScene <- function(scene.dir) {
       return(NULL)
     },
     finally={
-      message(paste("Processed lake:", lake)) 
+      message(paste("Processed lake:", scene.dir)) 
     }
   )    
   return(out)
